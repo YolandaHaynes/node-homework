@@ -56,7 +56,7 @@ async function PromisesAPI(){
     });
 
     readStream.on("end", () => {
-      console.log("Finished reading large file with streams");
+      console.log("Finished reading large file with streams.");
     });
 
     readStream.on("error", (err) => {

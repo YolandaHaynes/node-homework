@@ -17,7 +17,19 @@ fs.readFile(filePath, "utf8", (err, content) => {
 })
 
   // Callback hell example (test and leave it in comments):
+  // fs.readFile(path.join(__dirname, './sample-files', 'file1.txt'), 'utf8', (err, data1) => {
+  //   if (err) throw err;
 
+  //   fs.readFile(path.join(__dirname, './sample-files', 'file2.txt'), 'utf8', (err, data2) => {
+  //     if (err) throw err;
+
+  //     fs.readFile(path.join(__dirname, './sample-files', 'file3.txt'), 'utf8', (err, data3) => {
+  //       if (err) throw err;
+
+  //       console.log(data1, data2, data3);
+  //     });
+  //   });
+  // });
 
   // 2. Promise style
 
