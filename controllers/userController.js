@@ -1,6 +1,10 @@
 global.users = [];
+const { userSchema } = require("../validation/userSchema");
+
 
 function register(req, res){
+    const { error, value } = userSchema.validate(req.body, { abortEarly: false });
+    
     const user = {
         name: req.body.name, 
         email: req.body.email, 
