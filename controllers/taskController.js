@@ -52,9 +52,9 @@ const index = (req, res) => {
 exports.index = index;
 
 const show = (req, res) => {
-  const taskId = Number(req.params?.id);
+  const taskId = parseInt(req.params?.id);
 
-  if (!Number.isInteger(taskId) || taskId <= 0) {
+  if (!taskId) {
     return res.status(400).json({
       message: "The task ID passed is not valid.",
     });
@@ -79,14 +79,16 @@ exports.show = show;
 const update = (req, res) => {
   if (!req.body) req.body = {};
 
-  const { error, value } = patchTaskSchema.validate(req.body, { abortEarly: false });
+  const { error, value } = patchTaskSchema.validate(req.body, {
+    abortEarly: false,
+  });
   if (error) {
     return res.status(400).json({ message: error.message });
   }
 
-  const taskId = Number(req.params?.id);
+  const taskId = parseInt(req.params?.id);
 
-  if (!Number.isInteger(taskId) || taskId <= 0) {
+  if (!taskId) {
     return res.status(400).json({
       message: "The task ID passed is not valid.",
     });
@@ -110,13 +112,14 @@ const update = (req, res) => {
 exports.update = update;
 
 const deleteTask = (req, res) => {
-  const taskId = Number(req.params?.id);
+  const taskId = parseInt(req.params?.id);
 
-  if (!Number.isInteger(taskId) || taskId <= 0) {
+  if (!taskId) {
     return res.status(400).json({
       message: "The task ID passed is not valid.",
     });
   }
+
   const taskIndex = global.tasks.findIndex(
     (task) => task.id === taskId && task.userId === global.user_id.email,
   );

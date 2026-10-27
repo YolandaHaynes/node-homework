@@ -57,7 +57,11 @@ async function logon(req, res) {
 
   const user = global.users.find((user) => user.email === email);
 
-  if (user && (await comparePassword(req.body.password, user.hashedPassword))) {
+  if (
+    user &&
+    password &&
+    (await comparePassword(req.body.password, user.hashedPassword))
+  ) {
     global.user_id = user;
 
     return res.status(200).json({
