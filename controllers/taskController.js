@@ -9,10 +9,10 @@ const taskCounter = (() => {
   };
 })();
 
-exports.create = async (req, res) => {
+const create = async (req, res) => {
   if (!req.body) req.body = {};
 
-  const { error, value } = taskSchema.validate(req.body);
+  const { error, value } = taskSchema.validate(req.body, { abortEarly: false });
 
   if (error) {
     return res.status(400).json({ message: error.message });
@@ -30,6 +30,8 @@ exports.create = async (req, res) => {
 
   return res.status(201).json(sanitizedTask);
 };
+
+exports.create = create;
 
 const index = (req, res) => {
   const userTasks = global.tasks.filter(
@@ -75,7 +77,9 @@ const show = (req, res) => {
 exports.show = show;
 
 const update = (req, res) => {
-  const { error, value } = patchTaskSchema.validate(req.body);
+  if (!req.body) req.body = {};
+
+  const { error, value } = patchTaskSchema.validate(req.body, { abortEarly: false });
   if (error) {
     return res.status(400).json({ message: error.message });
   }

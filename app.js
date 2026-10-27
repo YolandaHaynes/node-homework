@@ -11,6 +11,8 @@ const errorHandler = require("./middleware/error-handler");
 const userRoutes = require("./routes/userRoutes");
 const authMiddleware = require("./middleware/auth");
 const taskRouter = require("./routes/taskRoutes");
+const timeRouter = require("./routes/timeRoutes");
+
 
 app.use(express.json());
 
@@ -27,14 +29,7 @@ app.post("/testpost", (req, res) => {
   });
 });
 
-const timeRouter = require("./routes/timeRoutes");
 app.use("/api", timeRouter);
-
-// app.all("/{*splat}", (req, res) => {
-//   res.status(404).json({
-//     message: `No route found for ${req.method} ${req.path}`,
-//   });
-// });
 
 app.use(notFound);
 

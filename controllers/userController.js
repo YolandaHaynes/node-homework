@@ -1,86 +1,85 @@
-global.users = [];
 const { userSchema } = require("../validation/userSchema");
 const crypto = require("crypto");
 const util = require("util");
 const scrypt = util.promisify(crypto.scrypt);
 
-async function hashPassword(password) {
-    const salt = crypto.randomBytes(16).toString("hex");
-    const derivedKey = await scrypt(password, salt, 64);
+global.users = [];
 
-    return `${salt}:${derivedKey.toString("hex")}`;
+async function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const derivedKey = await scrypt(password, salt, 64);
+
+  return `${salt}:${derivedKey.toString("hex")}`;
 }
 
 async function comparePassword(inputPassword, storedHash) {
-    const [salt, key] = storedHash.split(":");
-    const derivedKey = await scrypt(inputPassword, salt, 64);
+  const [salt, key] = storedHash.split(":");
+  const derivedKey = await scrypt(inputPassword, salt, 64);
 
-    return crypto.timingSafeEqual(
-        Buffer.from(key, "hex"),
-        derivedKey
-    );
+  return crypto.timingSafeEqual(Buffer.from(key, "hex"), derivedKey);
 }
 
 async function register(req, res) {
-    const { error, value } = userSchema.validate(req.body, {
-        abortEarly: false,
+  if (!req.body) req.body = {};
+
+  const { error, value } = userSchema.validate(req.body, {
+    abortEarly: false,
+  });
+
+  if (error) {
+    return res.status(400).json({
+      message: error.details.map((detail) => detail.message),
     });
+  }
 
-    if (error) {
-        return res.status(400).json({
-            message: error.details.map((detail) => detail.message),
-        });
-    }
+  const hashedPassword = await hashPassword(value.password);
 
-    const hashedPassword = await hashPassword(value.password);
+  const user = {
+    name: value.name,
+    email: value.email,
+    hashedPassword,
+  };
 
-    const user = {
-        name: value.name,
-        email: value.email,
-        hashedPassword,
-    };
+  global.users.push(user);
+  global.user_id = user;
 
-    global.users.push(user);
-    global.user_id = user;
-
-    return res.status(201).json({
-        name: user.name,
-        email: user.email,
-    });
+  return res.status(201).json({
+    name: user.name,
+    email: user.email,
+  });
 }
 
 async function logon(req, res) {
-    const user = global.users.find(
-        (user) => user.email === req.body.email
-    );
+  if (!req.body) req.body = {};
 
-    if (
-        user &&
-        await comparePassword(req.body.password, user.hashedPassword)
-    ) {
-        global.user_id = user;
+  const email = req.body.email?.trim().toLowerCase();
+  const password = req.body.password;
 
-        return res.status(200).json({
-            name: user.name,
-            email: user.email,
-        });
-    }
+  const user = global.users.find((user) => user.email === email);
 
-    return res.status(401).json({
-        message: "Invalid email or password",
+  if (user && (await comparePassword(req.body.password, user.hashedPassword))) {
+    global.user_id = user;
+
+    return res.status(200).json({
+      name: user.name,
+      email: user.email,
     });
+  }
+
+  return res.status(401).json({
+    message: "Invalid email or password",
+  });
 }
 
-function logoff(req, res){
-    global.user_id = null;
-    res.status(200).json({
-        message: "You have logged off successfully",
-    })
-    
+function logoff(req, res) {
+  global.user_id = null;
+  res.status(200).json({
+    message: "You have logged off successfully",
+  });
 }
 
-module.exports ={
-    register, 
-    logon,
-    logoff
+module.exports = {
+  register,
+  logon,
+  logoff,
 };
