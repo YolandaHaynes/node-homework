@@ -1,43 +1,75 @@
 global.users = [];
 const { userSchema } = require("../validation/userSchema");
+const crypto = require("crypto");
+const util = require("util");
+const scrypt = util.promisify(crypto.scrypt);
 
+async function hashPassword(password) {
+    const salt = crypto.randomBytes(16).toString("hex");
+    const derivedKey = await scrypt(password, salt, 64);
 
-function register(req, res){
-    const { error, value } = userSchema.validate(req.body, { abortEarly: false });
-    
-    const user = {
-        name: req.body.name, 
-        email: req.body.email, 
-        password: req.body.password};
-
-    global.users.push(user);
-    global.user_id= user;
-
-    res.status(201).json({
-    'name': user.name,
-    'email': user.email,
-  });
+    return `${salt}:${derivedKey.toString("hex")}`;
 }
 
-function logon(req, res){
-    const user = global.users.find((user) => {
-    return user.email === req.body.email &&
-           user.password === req.body.password;
-        });
+async function comparePassword(inputPassword, storedHash) {
+    const [salt, key] = storedHash.split(":");
+    const derivedKey = await scrypt(inputPassword, salt, 64);
 
-    if (user){
-        global.user_id = user;
-        res.status(200).json({
-            'name': global.user_id.name,
-            'email': global.user_id.email,
-        });
-    } else {
-        res.status(401).json({
-            message: "Invalid email or password",
+    return crypto.timingSafeEqual(
+        Buffer.from(key, "hex"),
+        derivedKey
+    );
+}
+
+async function register(req, res) {
+    const { error, value } = userSchema.validate(req.body, {
+        abortEarly: false,
+    });
+
+    if (error) {
+        return res.status(400).json({
+            message: error.details.map((detail) => detail.message),
         });
     }
+
+    const hashedPassword = await hashPassword(value.password);
+
+    const user = {
+        name: value.name,
+        email: value.email,
+        hashedPassword,
+    };
+
+    global.users.push(user);
+    global.user_id = user;
+
+    return res.status(201).json({
+        name: user.name,
+        email: user.email,
+    });
 }
 
+async function logon(req, res) {
+    const user = global.users.find(
+        (user) => user.email === req.body.email
+    );
+
+    if (
+        user &&
+        await comparePassword(req.body.password, user.hashedPassword)
+    ) {
+        global.user_id = user;
+
+        return res.status(200).json({
+            name: user.name,
+            email: user.email,
+        });
+    }
+
+    return res.status(401).json({
+        message: "Invalid email or password",
+    });
+}
 
 function logoff(req, res){
     global.user_id = null;
