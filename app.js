@@ -3,8 +3,6 @@ const express = require("express");
 const app = express();
 
 global.user_id = null;
-global.users = [];
-global.tasks = [];
 
 const notFound = require("./middleware/not-found");
 const errorHandler = require("./middleware/error-handler");
@@ -12,7 +10,7 @@ const userRoutes = require("./routes/userRoutes");
 const authMiddleware = require("./middleware/auth");
 const taskRouter = require("./routes/taskRoutes");
 const timeRouter = require("./routes/timeRoutes");
-
+const pool = require("./db/pg-pool");
 
 app.use(express.json());
 
@@ -30,6 +28,17 @@ app.post("/testpost", (req, res) => {
 });
 
 app.use("/api", timeRouter);
+
+app.get("/health", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({ status: "ok", db: "connected" });
+  } catch (err) {
+    res.status(500).json({
+      message: `db not connected, error: ${err.message}`,
+    });
+  }
+});
 
 app.use(notFound);
 
@@ -67,6 +76,8 @@ async function shutdown(code = 0) {
       });
     });
     console.log("HTTP server closed.");
+    await pool.end();
+    console.log("PostgreSQL connection pool closed.");
   } catch (err) {
     console.error("Error during shutdown:", err);
     code = 1;
