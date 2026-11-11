@@ -1,52 +1,73 @@
 const { taskSchema, patchTaskSchema } = require("../validation/taskSchema");
-const pool = require("../db/pg-pool");
-
-
+const prisma = require("../db/prisma");
 const create = async (req, res) => {
   if (!req.body) req.body = {};
 
-  const { error, value } = taskSchema.validate(req.body, { abortEarly: false });
+  const { error, value } = taskSchema.validate(req.body, {
+    abortEarly: false,
+  });
 
   if (error) {
     return res.status(400).json({ message: error.message });
   }
 
- try {
-    const result = await pool.query(
-      `INSERT INTO tasks (user_id, title)
-       VALUES ($1, $2)
-       RETURNING id, title, is_completed`,
-      [global.user_id, value.title]
-    );
+  try {
+    const task = await prisma.task.create({
+      data: {
+        title: value.title,
+        userId: global.user_id,
+      },
+      select: {
+        id: true,
+        title: true,
+        isCompleted: true,
+      },
+    });
 
-    return res.status(201).json(result.rows[0]);
+    return res.status(201).json({
+      id: task.id,
+      title: task.title,
+      isCompleted: task.isCompleted,
+    });
   } catch (err) {
-  console.error("Could not create task:", err);
-  return res.status(500).json({
-    message: "Could not create task.",
-  });
-}
+    console.error("Could not create task:", err);
+    return res.status(500).json({
+      message: "Could not create task.",
+    });
+  }
 };
 
 exports.create = create;
 
 const index = async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT id, title, is_completed
-       FROM tasks
-       WHERE user_id = $1
-       ORDER BY id`,
-      [global.user_id]
-    );
+    const tasks = await prisma.task.findMany({
+      where: {
+        userId: global.user_id,
+      },
+      orderBy: {
+        id: "asc",
+      },
+      select: {
+        id: true,
+        title: true,
+        isCompleted: true,
+      },
+    });
 
-    if (result.rows.length === 0) {
+    if (tasks.length === 0) {
       return res.status(404).json({
         message: "No tasks found.",
       });
     }
 
-    return res.status(200).json(result.rows);
+    return res.status(200).json(
+      tasks.map((task) => ({
+        id: task.id,
+        title: task.title,
+        is_completed: task.isCompleted,
+      }))
+    );
   } catch (err) {
     console.error("Could not fetch tasks:", err);
     return res.status(500).json({
@@ -57,7 +78,7 @@ const index = async (req, res) => {
 
 exports.index = index;
 
-const show = async(req, res) => {
+const show = async (req, res) => {
   const taskId = Number.parseInt(req.params?.id, 10);
 
   if (!Number.isInteger(taskId) || taskId <= 0) {
@@ -66,21 +87,32 @@ const show = async(req, res) => {
     });
   }
 
-    try {
-    const result = await pool.query(
-      `SELECT id, title, is_completed
-       FROM tasks
-       WHERE id = $1 AND user_id = $2`,
-      [taskId, global.user_id]
-    );
+  try {
+    const task = await prisma.task.findUnique({
+      where: {
+        id_userId: {
+          id: taskId,
+          userId: global.user_id,
+        },
+      },
+      select: {
+        id: true,
+        title: true,
+        isCompleted: true,
+      },
+    });
 
-    if (result.rows.length === 0) {
+    if (!task) {
       return res.status(404).json({
         message: "Task not found.",
       });
     }
 
-    return res.status(200).json(result.rows[0]);
+    return res.status(200).json({
+      id: task.id,
+      title: task.title,
+      is_completed: task.isCompleted,
+    });
   } catch (err) {
     console.error("Could not fetch task:", err);
     return res.status(500).json({
@@ -118,36 +150,37 @@ const update = async (req, res) => {
     });
   }
 
-  const allowedColumns = {
-    title: "title",
-    isCompleted: "is_completed",
-  };
-
   try {
-    const values = fields.map((field) => value[field]);
-    const setClause = fields
-      .map((field, index) => `${allowedColumns[field]} = $${index + 1}`)
-      .join(", ");
+    const task = await prisma.task.update({
+      where: {
+        id_userId: {
+          id: taskId,
+          userId: global.user_id,
+        },
+      },
+      data: value,
+      select: {
+        id: true,
+        title: true,
+        isCompleted: true,
+      },
+    });
 
-    values.push(taskId, global.user_id);
-
-    const result = await pool.query(
-      `UPDATE tasks
-       SET ${setClause}
-       WHERE id = $${values.length - 1}
-         AND user_id = $${values.length}
-       RETURNING id, title, is_completed`,
-      values
-    );
-
-    if (result.rows.length === 0) {
+    return res.status(200).json({
+      id: task.id,
+      title: task.title,
+      is_completed: task.isCompleted,
+    });
+  } catch (err) {
+    if (
+      err.name === "PrismaClientKnownRequestError" &&
+      err.code === "P2025"
+    ) {
       return res.status(404).json({
         message: "Task not found.",
       });
     }
 
-    return res.status(200).json(result.rows[0]);
-  } catch (err) {
     console.error("Could not update task:", err);
     return res.status(500).json({
       message: "Could not update task.",
@@ -156,7 +189,6 @@ const update = async (req, res) => {
 };
 
 exports.update = update;
-
 
 const deleteTask = async (req, res) => {
   const taskId = Number.parseInt(req.params?.id, 10);
@@ -168,21 +200,35 @@ const deleteTask = async (req, res) => {
   }
 
   try {
-    const result = await pool.query(
-      `DELETE FROM tasks
-       WHERE id = $1 AND user_id = $2
-       RETURNING id, title, is_completed`,
-      [taskId, global.user_id]
-    );
+    const task = await prisma.task.delete({
+      where: {
+        id_userId: {
+          id: taskId,
+          userId: global.user_id,
+        },
+      },
+      select: {
+        id: true,
+        title: true,
+        isCompleted: true,
+      },
+    });
 
-    if (result.rows.length === 0) {
+    return res.status(200).json({
+      id: task.id,
+      title: task.title,
+      is_completed: task.isCompleted,
+    });
+  } catch (err) {
+    if (
+      err.name === "PrismaClientKnownRequestError" &&
+      err.code === "P2025"
+    ) {
       return res.status(404).json({
         message: "Task not found.",
       });
     }
 
-    return res.status(200).json(result.rows[0]);
-  } catch (err) {
     console.error("Could not delete task:", err);
     return res.status(500).json({
       message: "Could not delete task.",
@@ -191,5 +237,4 @@ const deleteTask = async (req, res) => {
 };
 
 exports.deleteTask = deleteTask;
-
 
