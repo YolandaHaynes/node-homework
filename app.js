@@ -10,7 +10,6 @@ const userRoutes = require("./routes/userRoutes");
 const authMiddleware = require("./middleware/auth");
 const taskRouter = require("./routes/taskRoutes");
 const timeRouter = require("./routes/timeRoutes");
-const pool = require("./db/pg-pool");
 const prisma = require("./db/prisma");
 
 app.use(express.json());
@@ -62,8 +61,6 @@ async function shutdown(code = 0) {
     await prisma.$disconnect();
     console.log("Prisma disconnected");
     console.log("HTTP server closed.");
-    await pool.end();
-    console.log("PostgreSQL connection pool closed.");
   } catch (err) {
     console.error("Error during shutdown:", err);
     code = 1;

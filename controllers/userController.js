@@ -1,7 +1,6 @@
 const { userSchema } = require("../validation/userSchema");
 const crypto = require("crypto");
 const util = require("util");
-const pool = require("../db/pg-pool");
 const prisma = require("../db/prisma");
 
 const scrypt = util.promisify(crypto.scrypt);
@@ -32,7 +31,7 @@ async function register(req, res, next) {
       message: error.details.map((detail) => detail.message),
     });
   }
-  
+
   value.hashedPassword = await hashPassword(value.password);
   delete value.password;
 
