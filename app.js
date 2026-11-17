@@ -4,6 +4,8 @@ const app = express();
 
 global.user_id = null;
 
+const analyticsRoutes = require("./routes/analyticsRoutes");
+
 const notFound = require("./middleware/not-found");
 const errorHandler = require("./middleware/error-handler");
 const userRoutes = require("./routes/userRoutes");
@@ -14,6 +16,7 @@ const prisma = require("./db/prisma");
 
 app.use(express.json());
 
+app.use("/api/analytics", analyticsRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/tasks", authMiddleware, taskRouter);
 
