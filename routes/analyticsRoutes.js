@@ -1,5 +1,5 @@
 const express = require("express");
-const taskController = require("../controllers/analyticsController");
+const analyticsController = require("../controllers/analyticsController");
 const router = express.Router();
 
 router.get("/users/:id", analyticsController.getUserAnalytics);
