@@ -16,7 +16,7 @@ const prisma = require("./db/prisma");
 
 app.use(express.json());
 
-app.use("/api/analytics", analyticsRoutes);
+app.use("/api/analytics", authMiddleware, analyticsRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/tasks", authMiddleware, taskRouter);
 
