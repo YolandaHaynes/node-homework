@@ -16,7 +16,7 @@ const create = async (req, res) => {
     const task = await prisma.task.create({
       data: {
         title: value.title,
-        userId: global.user_id,
+        userId: req.user.id,
         isCompleted: value.isCompleted,
         priority: value.priority,
       },
@@ -35,10 +35,7 @@ const create = async (req, res) => {
       priority: task.priority,
     });
   } catch (err) {
-    console.error("Could not create task:", err);
-    return res.status(500).json({
-      message: "Could not create task.",
-    });
+    throw err;
   }
 };
 
@@ -50,7 +47,7 @@ const index = async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
     const skip = (page - 1) * limit;
 
-    const whereClause = { userId: global.user_id };
+    const whereClause = { userId: req.user.id };
 
     if(req.query.find){
       whereClause.title = {
@@ -132,7 +129,7 @@ const show = async (req, res) => {
       where: {
         id_userId: {
           id: taskId,
-          userId: global.user_id,
+          userId: req.user.id,
         },
       },
       select: {
@@ -202,7 +199,7 @@ const update = async (req, res) => {
       where: {
         id_userId: {
           id: taskId,
-          userId: global.user_id,
+          userId: req.user.id,
         },
       },
       data: value,
@@ -250,7 +247,7 @@ const deleteTask = async (req, res) => {
       where: {
         id_userId: {
           id: taskId,
-          userId: global.user_id,
+          userId: req.user.id,
         },
       },
       select: {
@@ -306,7 +303,7 @@ const bulkCreate = async (req, res, next) => {
       title: value.title,
       isCompleted: value.isCompleted || false,
       priority: value.priority || 'medium',
-      userId: global.user_id
+      userId: req.user.id
     });
   }
 

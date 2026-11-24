@@ -15,14 +15,14 @@
   "author": "Code the Dream",
   "license": "MIT",
   "dependencies": {
-    "@prisma/client": "^6.19.2",
+    "@prisma/client": "^6.19.3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.2.1",
-    "express-xss-sanitizer": "^1.1.1",
-    "helmet": "^8.1.0",
+    "express-rate-limit": "^8.7.5",
+    "express-xss-sanitizer": "^2.0.2",
+    "helmet": "^8.3.0",
     "http-status-codes": "^2.3.0",
     "joi": "^18.3.0",
     "jsonwebtoken": "^9.0.3",
@@ -44,10 +44,10 @@
     "uuid": "^13.0.0"
   },
   "allowScripts": {
-    "@prisma/client@6.19.2": true,
-    "@prisma/engines@6.12.0": true,
-    "prisma@6.12.0": true,
     "unrs-resolver@1.11.1": true,
-    "nodemon@1.19.4": true
+    "nodemon@1.19.4": true,
+    "prisma@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "@prisma/client@6.19.3": true
   }
 }
