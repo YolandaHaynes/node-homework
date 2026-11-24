@@ -37,7 +37,6 @@ async function register(req, res, next) {
 
   const {email, name, hashedPassword} = value;
 
-  let user = null;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -73,16 +72,17 @@ async function register(req, res, next) {
       return { user: newUser, welcomeTasks };
     });
 
-    // Store the user ID globally for session management (not secure for production)
-    global.user_id = result.user.id;
+    
+    const csrfToken = setJwtCookie(req, res, result.user);
 
     //Send response with status 201
     res.status(201);
     res.json({
       user: result.user,
       welcomeTasks: result.welcomeTasks,
-      transactionStatus: 'success'
-    });
+      transactionStatus: 'success',
+      csrfToken: csrfToken,
+    })
     return;
 
   } catch (err) {
@@ -119,11 +119,12 @@ async function logon(req, res, next) {
       password &&
       (await comparePassword(password, user.hashedPassword))
     ) {
-      global.user_id = user.id;
+      const csrfToken = setJwtCookie(req, res, user);
 
       return res.status(200).json({
         name: user.name,
         email: user.email,
+        csrfToken,
       });
     }
 
@@ -131,12 +132,34 @@ async function logon(req, res, next) {
       message: "Invalid email or password",
     });
   } catch (err) {
+    console.error("LOGON ERROR:", err);
     return next(err);
   }
 }
 
+const { randomUUID } = require("crypto");
+const jwt = require("jsonwebtoken");
+
+const cookieFlags = (req) => {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", // only when HTTPS is available
+    sameSite: "Strict",
+  };
+};
+
+const setJwtCookie = (req, res, user) => {
+  // Sign JWT
+  const payload = { id: user.id, csrfToken: randomUUID() };
+  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" }); // 1 hour expiration
+  // Set cookie.  Note that the cookie flags have to be different in production and in test.
+  res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); // 1 hour expiration
+  return payload.csrfToken; // this is needed in the body returned by logon() or register()
+};
+
 function logoff(req, res) {
-  global.user_id = null;
+  res.clearCookie("jwt", cookieFlags(req));
+
   res.status(200).json({
     message: "You have logged off successfully",
   });

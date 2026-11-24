@@ -1,24 +1,50 @@
 const express = require("express");
-
 const app = express();
 
-global.user_id = null;
+app.set("trust proxy", 1);
+
+const helmet = require("helmet");
+const { xss } = require("express-xss-sanitizer");
+const rateLimiter = require("express-rate-limit");
+const cookieParser = require("cookie-parser");
+
+
+app.use(
+  rateLimiter({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+  }),
+);
+
+app.use(helmet());
+
+app.use(express.json());
+app.use(cookieParser())
+app.use(xss());
 
 const analyticsRoutes = require("./routes/analyticsRoutes");
 
 const notFound = require("./middleware/not-found");
 const errorHandler = require("./middleware/error-handler");
 const userRoutes = require("./routes/userRoutes");
-const authMiddleware = require("./middleware/auth");
 const taskRouter = require("./routes/taskRoutes");
 const timeRouter = require("./routes/timeRoutes");
 const prisma = require("./db/prisma");
 
-app.use(express.json());
+app.get("/health", async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "ok", db: "connected" });
+  } catch (err) {
+    res
+      .status(500)
+      .json({ status: "error", db: "not connected", error: err.message });
+  }
+});
 
-app.use("/api/analytics", authMiddleware, analyticsRoutes);
+app.use("/api/analytics",  analyticsRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/tasks", authMiddleware, taskRouter);
+app.use("/api/tasks", taskRouter);
 
 app.get("/", (req, res) => {
   res.send("Hello, World!");
@@ -72,16 +98,6 @@ async function shutdown(code = 0) {
   }
 }
 
-app.get("/health", async (req, res) => {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    res.json({ status: "ok", db: "connected" });
-  } catch (err) {
-    res
-      .status(500)
-      .json({ status: "error", db: "not connected", error: err.message });
-  }
-});
 
 process.on("SIGINT", () => shutdown(0));
 process.on("SIGTERM", () => shutdown(0));
